@@ -102,10 +102,6 @@ async function seedRevenue() {
 }
 
 export async function GET() {
-	// return Response.json({
-	// 	message:
-	// 		"Uncomment this file and remove this line. You can delete this file when you are finished.",
-	// });
 	try {
 		await client.sql`BEGIN`;
 		await seedUsers();
@@ -113,7 +109,6 @@ export async function GET() {
 		await seedInvoices();
 		await seedRevenue();
 		await client.sql`COMMIT`;
-
 		return Response.json({ message: "Database seeded successfully" });
 	} catch (error) {
 		await client.sql`ROLLBACK`;
