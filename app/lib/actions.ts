@@ -7,21 +7,45 @@ import { z } from "zod";
 
 const FormSchema = z.object({
 	id: z.string(),
-	customerId: z.string(),
-	amount: z.number(),
-	status: z.enum(["pending", "paid"]),
+	customerId: z.string({
+		invalid_type_error: "Please select a customer.",
+	}),
+	amount: z.coerce
+		.number()
+		.gt(0, { message: "Please enter an amount greater than $0." }),
+	status: z.enum(["pending", "paid"], {
+		invalid_type_error: "Please select an invoice status.",
+	}),
 	date: z.string(),
 });
+
+export type State = {
+	errors?: {
+		customerId?: string[];
+		amount?: string[];
+		status?: string[];
+	};
+	message?: string | null;
+};
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 const UpdateInvoice = FormSchema.omit({ date: true });
 
-export async function createInvoice(formData: FormData) {
-	const { customerId, amount, status } = CreateInvoice.parse({
+export async function createInvoice(prevState: State, formData: FormData) {
+	const { success, error, data } = CreateInvoice.safeParse({
 		customerId: formData.get("customerId"),
 		amount: Number(formData.get("amount")),
 		status: formData.get("status"),
 	});
+
+	if (!success) {
+		return {
+			errors: error.flatten().fieldErrors,
+			message: "Missing Fields. Failed to Create Invoice.",
+		};
+	}
+
+	const { customerId, amount, status } = data;
 	const amountInCents = 100 * amount;
 	const date = new Date().toISOString().split("T")[0];
 
@@ -64,7 +88,7 @@ export async function updateInvoice(formData: FormData) {
 }
 
 export async function deleteInvoice(id: string) {
-	throw new Error('Failed to Delete Invoice');
+	throw new Error("Failed to Delete Invoice");
 	try {
 		await sql`DELETE FROM invoices WHERE id = ${id}`;
 		revalidatePath("/dashboard/invoices");
